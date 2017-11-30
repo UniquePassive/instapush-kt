@@ -2,6 +2,8 @@
 
 A Kotlin wrapper for the Instapush API.
 
+![](https://i.imgur.com/LzTWLnR.png)
+
 ## Installation
 
 ### Gradle
