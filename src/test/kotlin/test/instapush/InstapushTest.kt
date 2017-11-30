@@ -26,7 +26,8 @@ class InstapushTest {
         var error: String? = null
 
         ip.push("update",
-                Pair("name", "Test Name"), Pair("status", "This is a test status."),
+                Pair("name", "Test Name"),
+                Pair("status", "This is a test status."),
                 callback = {
                     err ->
                     if (err != null) {
