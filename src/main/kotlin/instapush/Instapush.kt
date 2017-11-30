@@ -17,15 +17,15 @@ class Instapush(private val id: String, private val secret: String) {
 
     fun push(event: String,
              vararg trackers: Pair<String, String>,
-             callback: (String?) -> Unit = { _ -> }) {
+             callback: ((String?) -> Unit)? = null) {
 
         POST_URL.httpPost()
                 .header(Pair(HEADER_APP_ID, id),
                         Pair(HEADER_APP_SECRET, secret),
                         Pair("Content-Type", "application/json"))
                 .body(serializeEvent(event, trackers))
-                .responseObject<InstapushPostResponseModel> { request, _, result ->
-                    callback(getErrorFromResult(result))
+                .responseObject<InstapushPostResponseModel> { _, _, result ->
+                    callback?.invoke(getErrorFromResult(result))
                 }
     }
 
