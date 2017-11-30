@@ -1,11 +1,12 @@
 package instapush
 
-import com.github.kittinunf.fuel.core.FuelError
-import com.github.kittinunf.fuel.gson.responseObject
-import com.github.kittinunf.fuel.httpPost
-import com.github.kittinunf.result.Result
 import com.google.gson.Gson
 import com.google.gson.JsonObject
+import org.http4k.client.OkHttp
+import org.http4k.core.Method
+import org.http4k.core.Request
+import org.http4k.core.Response
+import org.http4k.core.Status
 
 
 class Instapush(private val id: String, private val secret: String) {
@@ -15,30 +16,18 @@ class Instapush(private val id: String, private val secret: String) {
         const val HEADER_APP_SECRET = "x-instapush-appsecret"
     }
 
-    fun push(event: String,
-             vararg trackers: Pair<String, String>,
-             callback: ((String?) -> Unit)? = null) {
+    private var http = OkHttp()
+    private val gson = Gson()
 
-        POST_URL.httpPost()
-                .header(Pair(HEADER_APP_ID, id),
-                        Pair(HEADER_APP_SECRET, secret),
-                        Pair("Content-Type", "application/json"))
+    fun push(event: String, vararg trackers: Pair<String, String>): String? {
+        val request = Request(Method.POST, POST_URL)
+                .header(HEADER_APP_ID, id)
+                .header(HEADER_APP_SECRET, secret)
+                .header("Content-Type", "application/json")
                 .body(serializeEvent(event, trackers))
-                .responseObject<InstapushPostResponseModel> { _, _, result ->
-                    callback?.invoke(getErrorFromResult(result))
-                }
-    }
+        val response = http(request)
 
-    fun pushSync(event: String, vararg trackers: Pair<String, String>): String? {
-        val (_, _, result) = POST_URL
-                .httpPost()
-                .header(Pair(HEADER_APP_ID, id),
-                        Pair(HEADER_APP_SECRET, secret),
-                        Pair("Content-Type", "application/json"))
-                .body(serializeEvent(event, trackers))
-                .responseObject<InstapushPostResponseModel>()
-
-        return getErrorFromResult(result)
+        return getErrorFromResult(response)
     }
 
     private fun serializeEvent(event: String, trackers: Array<out Pair<String, String>>): String {
@@ -54,17 +43,19 @@ class Instapush(private val id: String, private val secret: String) {
         return Gson().toJson(rootObj)
     }
 
-    private fun getErrorFromResult(result: Result<InstapushPostResponseModel, FuelError>): String? {
-        val (response, error) = result
+    private fun getErrorFromResult(response: Response): String? {
+        val responseModel = gson.fromJson(response.bodyString(), InstapushPostResponseModel::class.java)
 
-        if (error != null && error.exception is Result.Failure<*, *>) {
-            return error.toString()
-        } else if (response == null) {
-            return "component1 was null"
-        } else if (response.error) {
-            return response.msg
-        } else if (response.status != 200) {
-            return "response status was " + response.status + ", expected 200"
+        if (response.status != Status.OK) {
+            return "Response status was " + response.status + ", expected 200"
+        }
+
+        if (responseModel == null) {
+            return "Response was null"
+        }
+
+        if (responseModel.error) {
+            return responseModel.msg
         }
 
         return null
